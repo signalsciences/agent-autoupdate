@@ -27,3 +27,12 @@ jobs:
         version: v1.64
     - name: Build
       run: make build
+    - name: Authenticate GitHub CLI
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+    - name: Create GitHub Release and Upload .exe
+      run: |
+        gh release delete latest --yes || true
+        gh release create latest ./packaging/agent-autoupdate.exe \
+          --title "Latest Release" \
+          --notes "Automated release" \
+          --target ${{ github.sha }}
