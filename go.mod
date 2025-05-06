@@ -1,4 +1,4 @@
-module github.com/fastly/agent-autoupdate
+module github.com/signalsciences/agent-autoupdate
 
 go 1.23
 

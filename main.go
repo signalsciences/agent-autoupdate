@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/fastly/agent-autoupdate/cmd"
+	"github.com/signalsciences/agent-autoupdate/cmd"
 )
 
 var (
