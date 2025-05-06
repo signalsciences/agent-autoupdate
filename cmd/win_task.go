@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/fastly/agent-autoupdate/cmd/jobs"
+	"github.com/signalsciences/agent-autoupdate/cmd/jobs"
 )
 
 func initLogging(logFilePath string) (*os.File, error) {
