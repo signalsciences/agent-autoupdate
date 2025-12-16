@@ -55,11 +55,13 @@ func CheckForAgentUpdates() {
 	}
 
 	if latest_version, found := agent.compareAgainstLatest(); found {
-		if err := installNewVersion(); err != nil {
+		if err := installNewVersion(latest_version); err != nil {
 			log.Printf("New installation failed: %v\n", err)
 		} else {
 			log.Printf("installation of version %s complete\n", latest_version)
 		}
+	} else {
+		log.Println("No new agents found")
 	}
 }
 
@@ -120,7 +122,7 @@ func controlService(userCmd uint32) error {
 				break
 			}
 			if wait_count == wait_max {
-				log.Println("Agent service max wait reached")
+				log.Println("Agent stop service max wait reached")
 				err = exec.ErrWaitDelay
 				break
 			}
@@ -149,7 +151,7 @@ func controlService(userCmd uint32) error {
 				break
 			}
 			if wait_count == wait_max {
-				log.Println("Agent service max wait reached")
+				log.Println("Agent start service max wait reached")
 				err = exec.ErrWaitDelay
 				break
 			}
@@ -172,11 +174,12 @@ func fileExists(path string) bool {
 }
 
 // installNewVersion will download the latest agent and attempt to install it.
-func installNewVersion() (reterr error) {
+func installNewVersion(version_to_install string) (reterr error) {
 
-	resp, err := http.Get(DL_DOWNLOAD_SITE + "/sigsci-agent_latest.msi")
+	agentVersionName := "sigsci-agent_" + version_to_install + ".msi"
+	resp, err := http.Get(DL_DOWNLOAD_SITE + "/" + version_to_install + "/windows/" + agentVersionName)
 	if err != nil {
-		log.Printf("Failed to get latest agent: %v\n", err)
+		log.Printf("Failed net request for version %s of agent, err: %v\n", version_to_install, err)
 		return err
 	}
 	defer resp.Body.Close()
@@ -185,7 +188,7 @@ func installNewVersion() (reterr error) {
 	if resp.StatusCode == http.StatusOK {
 
 		tempDir := os.TempDir()
-		msiPath := filepath.Join(tempDir, "sigsci-agent_lastest.msi")
+		msiPath := filepath.Join(tempDir, agentVersionName)
 
 		tempFile, err := os.Create(msiPath)
 		if err != nil {
@@ -197,11 +200,12 @@ func installNewVersion() (reterr error) {
 			log.Println("Temporary file path does not exist")
 			return err
 		}
-		_, err = io.Copy(tempFile, resp.Body)
-		if err != nil {
-			log.Printf("Failed writing latest agent: %v\n", err)
+		if _, err = io.Copy(tempFile, resp.Body); err != nil {
+			log.Printf("net I/O failure for %s of agent: %v\n", version_to_install, err)
 			return err
 		}
+
+		_ = tempFile.Sync()
 
 		// Stop the Service, then install.
 		err = controlService(STOP_SERVICE)
@@ -209,11 +213,14 @@ func installNewVersion() (reterr error) {
 			return err
 		}
 
-		psCommand := fmt.Sprintf(`Start-Process msiexec.exe -ArgumentList '/i', '%s', '/quiet', '/norestart' -Verb RunAs`, msiPath)
+		msiexeclogName := "sigsci-agent_" + version_to_install + "_msiexec.log"
+		msiexeclogPath := filepath.Join(tempDir, msiexeclogName)
+		psCommand := fmt.Sprintf(`Start-Process msiexec.exe -ArgumentList '/i', '%s', '/quiet', '/norestart', '/l*vx!', '%s' -Verb RunAs`, msiPath, msiexeclogPath)
 		cmd := exec.Command("powershell", "-Command", psCommand)
 
 		output, retErr := cmd.CombinedOutput()
 		if retErr != nil {
+
 			log.Printf("Failed to install MSI: %v\nOutput: %s\n", retErr, string(output))
 			// Don't leave the existing service in a stalled state; force start
 			_ = controlService(START_SERVICE)
@@ -225,7 +232,7 @@ func installNewVersion() (reterr error) {
 		return retErr
 
 	} else {
-		log.Printf("Latest agent Status code is not ok: %v\n", resp.StatusCode)
+		log.Printf("Response code for version %s agent is not ok: %v\n", version_to_install, resp.StatusCode)
 	}
 	return exec.ErrNotFound
 
