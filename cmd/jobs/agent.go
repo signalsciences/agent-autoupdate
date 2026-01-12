@@ -54,14 +54,14 @@ func CheckForAgentUpdates() {
 		return
 	}
 
-	if latest_version, found := agent.compareAgainstLatest(); found {
+	if latest_version, found, err := agent.compareAgainstLatest(); found {
 		if err := installNewVersion(latest_version); err != nil {
-			log.Printf("New installation failed: %v\n", err)
+			log.Printf("installation error: %v\n", err)
 		} else {
 			log.Printf("installation of version %s complete\n", latest_version)
 		}
 	} else {
-		log.Println("No new agents found")
+		log.Printf("%v", err)
 	}
 }
 
@@ -70,8 +70,7 @@ func controlService(userCmd uint32) error {
 	// Connect to the Windows service manager
 	m, err := mgr.Connect()
 	if err != nil {
-		log.Printf("Connecting to service manager failed: %v\n", err)
-		return err
+		return fmt.Errorf("Connecting to service manager failed: %w\n", err)
 	}
 	defer func() {
 		err := m.Disconnect()
@@ -82,8 +81,7 @@ func controlService(userCmd uint32) error {
 
 	service, err := m.OpenService(WIN_SERVICE_NAME)
 	if err != nil {
-		log.Printf("Could not access agent service: %v\n", err)
-		return err
+		return fmt.Errorf("Could not access agent service: %w\n", err)
 	}
 	defer service.Close()
 
@@ -179,8 +177,7 @@ func installNewVersion(version_to_install string) (reterr error) {
 	agentVersionName := "sigsci-agent_" + version_to_install + ".msi"
 	resp, err := http.Get(DL_DOWNLOAD_SITE + "/" + version_to_install + "/windows/" + agentVersionName)
 	if err != nil {
-		log.Printf("Failed net request for version %s of agent, err: %v\n", version_to_install, err)
-		return err
+		return fmt.Errorf("net request for version %s of agent, err: %w\n", version_to_install, err)
 	}
 	defer resp.Body.Close()
 
@@ -197,12 +194,10 @@ func installNewVersion(version_to_install string) (reterr error) {
 		defer tempFile.Close()
 
 		if !fileExists(msiPath) {
-			log.Println("Temporary file path does not exist")
-			return err
+			return fmt.Errorf("Temporary file path does not exist")
 		}
 		if _, err = io.Copy(tempFile, resp.Body); err != nil {
-			log.Printf("net I/O failure for %s of agent: %v\n", version_to_install, err)
-			return err
+			return fmt.Errorf("net I/O failure for %s of agent: %w\n", version_to_install, err)
 		}
 
 		_ = tempFile.Sync()
@@ -215,7 +210,9 @@ func installNewVersion(version_to_install string) (reterr error) {
 
 		msiexeclogName := "sigsci-agent_" + version_to_install + "_msiexec.log"
 		msiexeclogPath := filepath.Join(tempDir, msiexeclogName)
-		psCommand := fmt.Sprintf(`Start-Process msiexec.exe -ArgumentList '/i', '%s', '/quiet', '/norestart', '/l*vx!', '%s' -Verb RunAs`, msiPath, msiexeclogPath)
+		log.Printf("%s\n", msiexeclogPath)
+		psCommand := fmt.Sprintf(`Start-Process msiexec.exe -ArgumentList '/i', '"%s"', '/quiet', '/norestart', '/l*vx!', '"%s"' -Verb RunAs`, msiPath, msiexeclogPath)
+		log.Printf("%s\n", psCommand)
 		cmd := exec.Command("powershell", "-Command", psCommand)
 
 		output, retErr := cmd.CombinedOutput()
@@ -244,16 +241,14 @@ func (p *agentInfo) getInstalledInfo() error {
 
 	key, err := registry.OpenKey(registry.LOCAL_MACHINE, REGISTRY_KEY_PATH_UNINSTALL, registry.READ)
 	if err != nil {
-		log.Printf("Failed to open registry key: %v\n", err)
-		return err
+		return fmt.Errorf("Failed to open registry key: %w\n", err)
 	}
 	defer key.Close()
 
 	subKeys, err := key.ReadSubKeyNames(-1)
 
 	if err != nil {
-		log.Printf("Failed to read subkeys: %v\n", err)
-		return err
+		return fmt.Errorf("Failed to read subkeys: %w\n", err)
 	}
 
 	for _, subKey := range subKeys {
@@ -289,11 +284,10 @@ func (p *agentInfo) getInstalledInfo() error {
 }
 
 // compareAgainstLatest checks the installed version against the latest agent version online.
-func (p *agentInfo) compareAgainstLatest() (string, bool) {
+func (p *agentInfo) compareAgainstLatest() (string, bool, error) {
 	resp, err := http.Get(DL_DOWNLOAD_SITE + "/VERSION")
 	if err != nil {
-		log.Printf("Failed to get latest VERSION: %v\n", err)
-		return "", false
+		return "", false, fmt.Errorf("Failed to get latest VERSION: %w\n", err)
 	}
 	defer resp.Body.Close()
 
@@ -302,18 +296,16 @@ func (p *agentInfo) compareAgainstLatest() (string, bool) {
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("Failed to read VERSION body %v\n", err)
-			return "", false
+			return "", false, fmt.Errorf("Failed to read VERSION body %w\n", err)
 		}
 		latest_version := strings.TrimSpace(string(body))
 		semver_installed := "v" + p.version
 		semvar_latest := "v" + latest_version
 		//log.Printf("latest version: %v, installed version: %v\n", semvar_latest, semver_installed)
 		if semver.Compare(semvar_latest, semver_installed) >= 1 {
-			return latest_version, true
+			return latest_version, true, nil
 		}
-	} else {
-		log.Printf("VERSION status code is not ok: %v\n", resp.StatusCode)
+		return "", false, fmt.Errorf("No new agents found")
 	}
-	return "", false
+	return "", false, fmt.Errorf("VERSION status code is not ok: %w\n", resp.StatusCode)
 }
