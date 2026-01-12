@@ -307,5 +307,5 @@ func (p *agentInfo) compareAgainstLatest() (string, bool, error) {
 		}
 		return "", false, fmt.Errorf("No new agents found")
 	}
-	return "", false, fmt.Errorf("VERSION status code is not ok: %w\n", resp.StatusCode)
+	return "", false, fmt.Errorf("VERSION status code is not ok: %d\n", resp.StatusCode)
 }
