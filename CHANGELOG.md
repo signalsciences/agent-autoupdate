@@ -1,5 +1,10 @@
 # agent-autoupdate Release Notes
 
+# 1.0.1 2026-01-12
+
+* Properly quote windows path args to msiexec
+* add embedded version information to binary
+
 # 1.0.0 2025-12-15
 
 * Log msiexec actions to file in Windows temp.
