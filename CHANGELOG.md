@@ -1,5 +1,9 @@
 # agent-autoupdate Release Notes
 
+# 1.0.2 2026-01-12
+
+* build/release workflow fixes for v1.0.1
+
 # 1.0.1 2026-01-12
 
 * Properly quote windows path args to msiexec
