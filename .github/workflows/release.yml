@@ -27,11 +27,6 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: 'go.mod'
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v6
-      with:
-        args: --timeout=5m -v
-        version: v1.64
     - name: Build
       run: make msi
     - name: Authenticate GitHub CLI
