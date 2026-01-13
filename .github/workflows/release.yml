@@ -6,31 +6,30 @@ on:
       - main
     tags: 
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
     - name: Check out code
       uses: actions/checkout@v4
       with:
         fetch-tags: true
-    - name: Install packages
-      uses: awalsh128/cache-apt-pkgs-action@v1
-      with:
-        packages: msitools wixl
-        version: 1.0
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version-file: 'go.mod'
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        args: --timeout=5m -v
+        version: v1.64
     - name: Build
-      run: make msi
-    - name: Authenticate GitHub CLI
-      run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+      run: make build
     - name: Create GitHub Release
       id: create_release
       uses: actions/create-release@v1
@@ -46,5 +45,5 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         gh release upload "$GITHUB_REF_NAME" \
-          ./packaging/agent-autoupdate* \
+          ./packaging/agent-autoupdate.exe \
           --clobber
