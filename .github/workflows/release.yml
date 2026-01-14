@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags: 
-      - "v*"  # triggers on a pushed tag, i.e. git push origin v1.x.x
+      - "v*"  # triggers on a pushed tag, i.e. create local tag; `git tag v1.x.x`, then `git push origin v1.x.x`
   workflow_dispatch:
 
 permissions:

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?define UpgradeCode= "e48f7043-22ae-44f7-a302-e912202db8d3" ?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="*" Name="Fastly Agent AutoUpdate" Language="1033" Manufacturer="Fastly" Version="$(env.VERSION)" UpgradeCode="$(var.UpgradeCode)">
+  <Product Id="*" Name="Fastly Agent AutoUpdate" Language="1033" Manufacturer="Fastly" Version="$(var.VERSION)" UpgradeCode="$(var.UpgradeCode)">
     <Package Id="*" Description="Fastly Agent AutoUpdate" InstallerVersion="500" Compressed="yes" InstallScope="perMachine" />
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
@@ -12,7 +12,7 @@
       <ComponentGroupRef Id="ProductComponents" />
     </Feature>
 
-    <Icon Id="sigsci.icon" SourceFile="packaging/sigsci.ico" />
+    <Icon Id="sigsci.icon" SourceFile="$(var.iconPath)" />
     <Property Id="ARPPRODUCTICON" Value="sigsci.icon" />
     <!-- <Property Id="MSIUSEREALADMINDETECTION" Value="1" /> -->
     <!-- <Property Id="ARPNOMODIFY" Value="1" /> -->
@@ -47,7 +47,7 @@
         <Component Id='MainExecutable' Guid='5fe9a39e-37b2-4b00-9075-b46ec5e2aa4d' Win64='yes'>
             <File Id='AgentAutoUpdateEXE'
                 Name='agent-autoupdate.exe'
-                Source='packaging/agent-autoupdate.exe'
+                Source="$(var.appPath)"
                 KeyPath='yes'
             />
         </Component>
